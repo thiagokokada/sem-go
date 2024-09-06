@@ -16,7 +16,7 @@ const (
 # == Adds a database upgrade script to this repository.
 #
 # == Usage
-#  sem-add <path>
+#  sem-add <path>...
 #
 # == Example
 #  sem-add ./new-script.sql
@@ -37,27 +37,28 @@ func main() {
 		os.Exit(1)
 	}
 
-	file := os.Args[1]
-	if !utils.FileExist(file) {
-		fmt.Fprintf(os.Stderr, "File[%s] could not be found\n", file)
-		os.Exit(1)
+	for _, file := range os.Args[1:] {
+		if !utils.FileExist(file) {
+			fmt.Fprintf(os.Stderr, "File[%s] could not be found\n", file)
+			os.Exit(1)
+		}
+		if filepath.Ext(file) != ".sql" {
+			fmt.Fprintf(os.Stderr, "File[%s] must end with .sql\n", file)
+			os.Exit(1)
+		}
+
+		utils.Must(utils.MkRelDir(targetDir))
+
+		target := filepath.Join(targetDir, getTargetFile())
+		for utils.FileExist(target) {
+			time.Sleep(1 * time.Millisecond)
+			target = filepath.Join(targetDir, getTargetFile())
+		}
+
+		fmt.Printf("Adding %s\n", target)
+		utils.Must(os.Rename(file, target))
+
+		utils.Must(exec.Command("git", "add", target).Run())
+		fmt.Println("File staged in git. You need to commit and push")
 	}
-	if filepath.Ext(file) != ".sql" {
-		fmt.Fprintf(os.Stderr, "File[%s] must end with .sql\n", file)
-		os.Exit(1)
-	}
-
-	utils.Must(utils.MkRelDir(targetDir))
-
-	target := filepath.Join(targetDir, getTargetFile())
-	for utils.FileExist(target) {
-		time.Sleep(1 * time.Millisecond)
-		target = filepath.Join(targetDir, getTargetFile())
-	}
-
-	fmt.Printf("Adding %s\n", target)
-	utils.Must(os.Rename(file, target))
-
-	utils.Must(exec.Command("git", "add", target).Run())
-	fmt.Println("File staged in git. You need to commit and push")
 }
