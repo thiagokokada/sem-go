@@ -1,12 +1,13 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"time"
+
+	"github.com/thiagokokada/sem-go/internal/utils"
 )
 
 const (
@@ -24,31 +25,15 @@ const (
 	targetDir = "scripts"
 )
 
-func must1[T any](v T, err error) T {
-	must(err)
-	return v
-}
-
-func must(err error) {
-	if err != nil {
-		panic(err)
-	}
-}
-
-func mustRelDir(dir string) {
-	parent := must1(os.Getwd())
-	scriptsDir := filepath.Join(parent, dir)
-	must(os.MkdirAll(scriptsDir, os.ModePerm))
-}
-
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Fprintf(os.Stderr, "**** ERROR: Need file path")
 		fmt.Fprintf(os.Stderr, usage)
 		os.Exit(1)
 	}
+
 	file := os.Args[1]
-	if _, err := os.Stat(file); errors.Is(err, os.ErrNotExist) {
+	if !utils.FileExist(file) {
 		fmt.Fprintf(os.Stderr, "File[%s] could not be found\n", file)
 		os.Exit(1)
 	}
@@ -57,20 +42,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	mustRelDir(targetDir)
+	utils.Must(utils.MkRelDir(targetDir))
 
 	now := time.Now().UTC().Format(dateFormat)
 	targetFile := now + ".sql"
 	target := filepath.Join(targetDir, targetFile)
 
-	for _, err := os.Stat(target); !errors.Is(err, os.ErrNotExist); time.Sleep(1 * time.Millisecond) {
+	for utils.FileExist(target) {
+		time.Sleep(1 * time.Millisecond)
 		now = time.Now().UTC().Format(dateFormat)
 		target = filepath.Join(targetDir, targetFile)
 	}
 
 	fmt.Printf("Adding %s\n", target)
-	must(os.Rename(file, target))
+	utils.Must(os.Rename(file, target))
 
-	must(exec.Command("git", "add", target).Run())
+	utils.Must(exec.Command("git", "add", target).Run())
 	fmt.Println("File staged in git. You need to commit and push")
 }
