@@ -25,6 +25,11 @@ const (
 	targetDir = "scripts"
 )
 
+func getTargetFile() string {
+	now := time.Now().UTC().Format(dateFormat)
+	return now + ".sql"
+}
+
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Fprintf(os.Stderr, "**** ERROR: Need file path")
@@ -44,14 +49,10 @@ func main() {
 
 	utils.Must(utils.MkRelDir(targetDir))
 
-	now := time.Now().UTC().Format(dateFormat)
-	targetFile := now + ".sql"
-	target := filepath.Join(targetDir, targetFile)
-
+	target := filepath.Join(targetDir, getTargetFile())
 	for utils.FileExist(target) {
 		time.Sleep(1 * time.Millisecond)
-		now = time.Now().UTC().Format(dateFormat)
-		target = filepath.Join(targetDir, targetFile)
+		target = filepath.Join(targetDir, getTargetFile())
 	}
 
 	fmt.Printf("Adding %s\n", target)
